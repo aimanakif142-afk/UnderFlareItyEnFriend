@@ -28,6 +28,35 @@ p:nth-of-type(3) {
   color: #C77DFF;
 }
 
+      
+.squircle {
+  position: fixed;
+  width: 55px;
+  height: 55px;
+  border-radius: 35%;
+  z-index: 2;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 26px;
+  color: #49365E;
+  box-shadow: 0 0 15px #FFFFFF55;
+}
+
+#soundButton {
+  position: fixed;
+  right: 15px;
+  bottom: 15px;
+  z-index: 10;
+  padding: 12px;
+  border-radius: 15px;
+  border: none;
+  background: #FF9EDD;
+  cursor: pointer;
+  font-family: 'PT Sans Caption', sans-serif;
+}
+
   </style>
 </head>
 <body>
@@ -35,5 +64,97 @@ p:nth-of-type(3) {
 <p>Wish I could register my own name.. just ignore my repository name LOL :D</p>
 <p>This is pretty cool, I like it and as you can see theres this background I added!</p>
 <p>By the way, this font is called PT Sans Caption available at Google Fonts.</p>
+  
+<div class="squircle" style="background:#FF9EDD">•ᴗ•</div>
+<div class="squircle" style="background:#9CEBFF">•ᴗ•</div>
+<div class="squircle" style="background:#C4A1FF">•ᴗ•</div>
+
+<button id="soundButton">🔇 Enable sounds</button>
+
+<script>
+const squircles = document.querySelectorAll(".squircle");
+const soundButton = document.getElementById("soundButton");
+
+let audioContext;
+let soundEnabled = false;
+
+soundButton.addEventListener("click", () => {
+  if (!audioContext) {
+    audioContext = new AudioContext();
+  }
+
+  audioContext.resume();
+  soundEnabled = !soundEnabled;
+
+  soundButton.textContent = soundEnabled
+    ? "🔊 Sounds ON"
+    : "🔇 Sounds OFF";
+});
+
+function boop() {
+  if (!soundEnabled || !audioContext) return;
+
+  const oscillator = audioContext.createOscillator();
+  const volume = audioContext.createGain();
+
+  oscillator.type = "sine";
+  oscillator.frequency.setValueAtTime(
+    600, audioContext.currentTime
+  );
+  oscillator.frequency.exponentialRampToValueAtTime(
+    300, audioContext.currentTime + 0.12
+  );
+
+  volume.gain.setValueAtTime(
+    0.06, audioContext.currentTime
+  );
+  volume.gain.exponentialRampToValueAtTime(
+    0.001, audioContext.currentTime + 0.12
+  );
+
+  oscillator.connect(volume);
+  volume.connect(audioContext.destination);
+
+  oscillator.start();
+  oscillator.stop(audioContext.currentTime + 0.12);
+}
+
+const objects = Array.from(squircles).map((element) => ({
+  element,
+  x: Math.random() * (window.innerWidth - 55),
+  y: Math.random() * (window.innerHeight - 55),
+  vx: (Math.random() > 0.5 ? 1 : -1) * 2,
+  vy: (Math.random() > 0.5 ? 1 : -1) * 2
+}));
+
+function animate() {
+  for (const obj of objects) {
+    obj.x += obj.vx;
+    obj.y += obj.vy;
+
+    const maxX = Math.max(0, window.innerWidth - 55);
+    const maxY = Math.max(0, window.innerHeight - 55);
+
+    if (obj.x <= 0 || obj.x >= maxX) {
+      obj.vx *= -1;
+      obj.x = Math.max(0, Math.min(obj.x, maxX));
+      boop();
+    }
+
+    if (obj.y <= 0 || obj.y >= maxY) {
+      obj.vy *= -1;
+      obj.y = Math.max(0, Math.min(obj.y, maxY));
+      boop();
+    }
+
+    obj.element.style.left = obj.x + "px";
+    obj.element.style.top = obj.y + "px";
+  }
+
+  requestAnimationFrame(animate);
+}
+
+animate();
+</script>
 </body>
 </html>  
