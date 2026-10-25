@@ -57,6 +57,28 @@ p:nth-of-type(3) {
   font-family: 'PT Sans Caption', sans-serif;
 }
 
+      
+#spawnButton {
+  position: fixed;
+  right: 15px;
+  bottom: 65px;
+  z-index: 10;
+  padding: 12px;
+  border-radius: 15px;
+  border: none;
+  background: #C4A1FF;
+  cursor: pointer;
+  font-family: 'PT Sans Caption', sans-serif;
+}
+
+#spawnButton:hover {
+  background: #E0C8FF;
+}
+
+.squircle {
+  box-sizing: border-box;
+}
+
   </style>
 </head>
 <body>
@@ -64,26 +86,34 @@ p:nth-of-type(3) {
 <p>Wish I could register my own name.. just ignore my repository name LOL :D</p>
 <p>This is pretty cool, I like it and as you can see theres this background I added!</p>
 <p>By the way, this font is called PT Sans Caption available at Google Fonts.</p>
-  
-<div class="squircle" style="background:#FF9EDD">•ᴗ•</div>
-<div class="squircle" style="background:#9CEBFF">•ᴗ•</div>
-<div class="squircle" style="background:#C4A1FF">•ᴗ•</div>
 
 <button id="soundButton">🔇 Enable sounds</button>
+<button id="spawnButton">➕ Add Squircle!</button>
+
 
 <script>
-const squircles = document.querySelectorAll(".squircle");
 const soundButton = document.getElementById("soundButton");
+const spawnButton = document.getElementById("spawnButton");
 
 let audioContext;
 let soundEnabled = false;
+const objects = [];
 
-soundButton.addEventListener("click", () => {
+const colors = [
+  "#FF9EDD",
+  "#9CEBFF",
+  "#C4A1FF",
+  "#FFE49B",
+  "#A6FFB5",
+  "#FFBFA3"
+];
+
+soundButton.addEventListener("click", async () => {
   if (!audioContext) {
     audioContext = new AudioContext();
   }
 
-  audioContext.resume();
+  await audioContext.resume();
   soundEnabled = !soundEnabled;
 
   soundButton.textContent = soundEnabled
@@ -96,57 +126,140 @@ function boop() {
 
   const oscillator = audioContext.createOscillator();
   const volume = audioContext.createGain();
+  const now = audioContext.currentTime;
 
   oscillator.type = "sine";
-  oscillator.frequency.setValueAtTime(
-    600, audioContext.currentTime
-  );
+  oscillator.frequency.setValueAtTime(550, now);
   oscillator.frequency.exponentialRampToValueAtTime(
-    300, audioContext.currentTime + 0.12
+    260, now + 0.1
   );
 
-  volume.gain.setValueAtTime(
-    0.06, audioContext.currentTime
-  );
+  volume.gain.setValueAtTime(0.025, now);
   volume.gain.exponentialRampToValueAtTime(
-    0.001, audioContext.currentTime + 0.12
+    0.001, now + 0.1
   );
 
   oscillator.connect(volume);
   volume.connect(audioContext.destination);
 
-  oscillator.start();
-  oscillator.stop(audioContext.currentTime + 0.12);
+  oscillator.start(now);
+  oscillator.stop(now + 0.1);
 }
 
-const objects = Array.from(squircles).map((element) => ({
-  element,
-  x: Math.random() * (window.innerWidth - 55),
-  y: Math.random() * (window.innerHeight - 55),
-  vx: (Math.random() > 0.5 ? 1 : -1) * 2,
-  vy: (Math.random() > 0.5 ? 1 : -1) * 2
-}));
+function addSquircle() {
+  const size = 30 + Math.random() * 50;
+
+  const element = document.createElement("div");
+  element.className = "squircle";
+  element.textContent = "•ᴗ•";
+  element.style.width = size + "px";
+  element.style.height = size + "px";
+  element.style.fontSize = size * 0.4 + "px";
+  element.style.background =
+    colors[Math.floor(Math.random() * colors.length)];
+
+  document.body.appendChild(element);
+
+  const maxX = Math.max(0, window.innerWidth - size);
+  const maxY = Math.max(0, window.innerHeight - size);
+
+  const angle = Math.random() * Math.PI * 2;
+  const speed = 1.5 + Math.random() * 1.5;
+
+  objects.push({
+    element,
+    size,
+    x: Math.random() * maxX,
+    y: Math.random() * maxY,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed
+  });
+}
+
+spawnButton.addEventListener("click", addSquircle);
+
+// Create three squircles when the page loads.
+for (let i = 0; i < 3; i++) {
+  addSquircle();
+}
 
 function animate() {
+  // Move squircles and bounce off walls.
   for (const obj of objects) {
     obj.x += obj.vx;
     obj.y += obj.vy;
 
-    const maxX = Math.max(0, window.innerWidth - 55);
-    const maxY = Math.max(0, window.innerHeight - 55);
+    const maxX = Math.max(0, window.innerWidth - obj.size);
+    const maxY = Math.max(0, window.innerHeight - obj.size);
 
-    if (obj.x <= 0 || obj.x >= maxX) {
+    if (obj.x < 0 || obj.x > maxX) {
       obj.vx *= -1;
       obj.x = Math.max(0, Math.min(obj.x, maxX));
       boop();
     }
 
-    if (obj.y <= 0 || obj.y >= maxY) {
+    if (obj.y < 0 || obj.y > maxY) {
       obj.vy *= -1;
       obj.y = Math.max(0, Math.min(obj.y, maxY));
       boop();
     }
+  }
 
+  // Check collisions between every pair.
+  for (let i = 0; i < objects.length; i++) {
+    for (let j = i + 1; j < objects.length; j++) {
+      const a = objects[i];
+      const b = objects[j];
+
+      const ax = a.x + a.size / 2;
+      const ay = a.y + a.size / 2;
+      const bx = b.x + b.size / 2;
+      const by = b.y + b.size / 2;
+
+      const dx = bx - ax;
+      const dy = by - ay;
+      const distance = Math.hypot(dx, dy);
+      const minDistance = (a.size + b.size) * 0.43;
+
+      if (distance < minDistance) {
+        // Find the collision direction.
+        const nx = distance > 0 ? dx / distance : 1;
+        const ny = distance > 0 ? dy / distance : 0;
+
+        // Separate overlapping squircles.
+        const overlap = minDistance - distance;
+
+        a.x -= nx * overlap / 2;
+        a.y -= ny * overlap / 2;
+        b.x += nx * overlap / 2;
+        b.y += ny * overlap / 2;
+
+        // Bounce only when moving toward each other.
+        const relativeSpeed =
+          (b.vx - a.vx) * nx +
+          (b.vy - a.vy) * ny;
+
+        if (relativeSpeed < 0) {
+          const massA = a.size * a.size;
+          const massB = b.size * b.size;
+
+          const impulse =
+            -(2 * relativeSpeed) /
+            (1 / massA + 1 / massB);
+
+          a.vx -= (impulse / massA) * nx;
+          a.vy -= (impulse / massA) * ny;
+          b.vx += (impulse / massB) * nx;
+          b.vy += (impulse / massB) * ny;
+
+          boop();
+        }
+      }
+    }
+  }
+
+  // Display their new positions.
+  for (const obj of objects) {
     obj.element.style.left = obj.x + "px";
     obj.element.style.top = obj.y + "px";
   }
